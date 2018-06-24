@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.kopirealm.permissionjedi">
+
+    <application>
+        <activity
+            android:name=".PermissionJediActivity"
+            android:label="@string/title_activity_permission_jedi"
+            android:theme="@style/Theme.AppCompat.Translucent"></activity>
+    </application>
+
+</manifest>

@@ -1,0 +1,129 @@
+/**
+ * Publish to Maven Central via OSSRH Maven repository
+ * OSSRH Central Repository requirement:
+ * https://central.sonatype.org/pages/requirements.html
+ * Deploying to OSSRH with Gradle refer:
+ * https://central.sonatype.org/pages/gradle.html#signing-artifacts
+ */
+
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+// Uncomment codes below to publish Java Libraries
+//def POM_PACKAGING = 'jar'
+//task javadocJar(type: Jar, dependsOn: javadoc) {
+//    classifier = 'javadoc'
+//    from tasks.javadoc.destinationDir
+//}
+//task sourcesJar(type: Jar) {
+//    from sourceSets.main.allSource
+//    classifier = 'sources'
+//}
+//artifacts {
+//    archives jar
+//    archives javadocJar
+//    archives sourcesJar
+//}
+//signing {
+//    sign configurations.archives
+//}
+
+// Uncomment codes below to publish Android Libraries
+def POM_PACKAGING = 'aar'
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier "source"
+}
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    destinationDir = file("../javadoc/")
+    failOnError false
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from tasks.javadoc.destinationDir
+}
+//Creating sources with comments
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+artifacts {
+    archives javadocJar
+    archives androidSourcesJar
+}
+signing {
+    sign configurations.archives
+}
+
+def POM_NAME = 'permission-jedi'
+def POM_ARTIFACT_ID = 'permission-jedi'
+def POM_GROUP_ID = 'com.github.kopihao'
+def POM_VERSION = project._versionName
+def POM_DESCRIPTION = POM_GROUP_ID + ':' + POM_ARTIFACT_ID + ':' + POM_VERSION
+def POM_URL = 'https://github.com/kopihao/permission-jedi'
+def POM_CONNECTION = 'scm:git@github.com:kopihao/permission-jedi.git'
+def POM_LICENSE_ALL = ["Apache-2.0"]
+def POM_LICENSE_NAME = 'The Apache Software License, Version 2.0'
+def POM_LICENSE_URL = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+def POM_DEVELOPER_ID = 'kopihao.my'
+def POM_DEVELOPER_NAME = 'Kopihao'
+def POM_DEVELOPER_EMAIL = 'kopihao@gmail.com'
+
+group = POM_GROUP_ID
+version = POM_VERSION
+println 'Uploading ' + POM_DESCRIPTION + " via OSSRH"
+
+def Object getSonatypeUsername() {
+    String usn = hasProperty('ossrhUsername') ? findProperty('ossrhUsername') : 'ossrhUsername';
+    println 'ossrhUsername : ' + usn.toString();
+    return usn;
+}
+
+def Object getSonatypePassword() {
+    String pwd = hasProperty('sonatypePassword') ? findProperty('ossrhPassword') : 'ossrhPassword';
+    println 'ossrhPassword : ' + pwd.toString();
+    return pwd;
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: getSonatypeUsername(), password: getSonatypePassword())
+            }
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: getSonatypeUsername(), password: getSonatypePassword())
+            }
+            pom.project {
+                name POM_NAME
+                packaging POM_PACKAGING
+                description POM_DESCRIPTION
+                artifactId POM_ARTIFACT_ID
+                url POM_URL
+                scm {
+                    url POM_URL
+                    connection POM_CONNECTION
+                    developerConnection POM_CONNECTION
+                }
+                licenses {
+                    license {
+                        name POM_LICENSE_NAME
+                        url POM_LICENSE_URL
+                        distribution 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id POM_DEVELOPER_ID
+                        name POM_DEVELOPER_NAME
+                        email POM_DEVELOPER_EMAIL
+                    }
+                }
+            }
+        }
+    }
+}
+
