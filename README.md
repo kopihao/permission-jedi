@@ -1,2 +1,2 @@
 # permission-jedi
-A JEDI to assist your Android Permission chores
+A JEDI to assist your Android Run-time Permission chores
