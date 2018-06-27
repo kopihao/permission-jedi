@@ -31,7 +31,9 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -41,7 +43,8 @@ import java.util.HashMap;
 public class PermissionJediActivity extends Activity {
 
     private static final int REQUEST_CODE_ASK_PERMISSIONS = 91001;
-    private static final int REQUEST_CODE_GOTO_SETTINGS = 91002;
+    private static final int REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS = 91002;
+    private static final int REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS = 91003;
     public static final String EXTRA_ACTION = "EXTRA_ACTION";
     public static final String EXTRA_PERMISSIONS = "EXTRA_PERMISSIONS";
 
@@ -57,11 +60,7 @@ public class PermissionJediActivity extends Activity {
         action = extras.getString(EXTRA_ACTION, "");
         permissions = extras.getStringArray(EXTRA_PERMISSIONS);
         PermissionJedi.getJedi().bind(this);
-        if (androidPreM()) {
-            grantAllPermissions();
-        } else {
-            runtimePermissions();
-        }
+        runtimePermissions();
     }
 
     @Override
@@ -102,8 +101,11 @@ public class PermissionJediActivity extends Activity {
             case PermissionJedi.ACTION_REQUEST:
                 requestPermissions(permissions);
                 break;
-            case PermissionJedi.ACTION_APPSETTINGS:
+            case PermissionJedi.ACTION_APP_PERMISSIONS_SETTINGS:
                 gotoAppSettings();
+                break;
+            case PermissionJedi.ACTION_APP_NOTIFICATIONS_SETTINGS:
+                gotoNotifcationSettings();
                 break;
             default:
                 finish();
@@ -113,7 +115,12 @@ public class PermissionJediActivity extends Activity {
     private HashMap<String, Boolean> checkPermission(@NonNull String... permissions) {
         HashMap<String, Boolean> permits = new HashMap<>();
         for (final String p : permissions) {
-            permits.put(p, (ContextCompat.checkSelfPermission(self, p) == PackageManager.PERMISSION_GRANTED));
+            if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
+                permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+            } else {
+                permits.put(p, (ContextCompat.checkSelfPermission(self, p) == PackageManager.PERMISSION_GRANTED));
+            }
+            Log.d("Jasper", "checkPermission()::" + p + "::" + permits.get(p));
         }
         return permits;
     }
@@ -162,7 +169,8 @@ public class PermissionJediActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_GOTO_SETTINGS) {
+        if (requestCode == REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS ||
+                requestCode == REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS) {
             hasPermissions(permissions);
             return;
         }
@@ -173,7 +181,38 @@ public class PermissionJediActivity extends Activity {
         intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         Uri uri = Uri.fromParts("package", self.getPackageName(), null);
         intent.setData(uri);
-        self.startActivityForResult(intent, REQUEST_CODE_GOTO_SETTINGS);
+        self.startActivityForResult(intent, REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS);
+    }
+
+    public void gotoNotifcationSettings() {
+        gotoNotifcationSettings(null);
+    }
+
+    public void gotoNotifcationSettings(String channel) {
+        try {
+            Intent intent = new Intent();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                if (!TextUtils.isEmpty(channel)) {
+                    intent.putExtra(Settings.EXTRA_CHANNEL_ID, channel);
+                }
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, self.getPackageName());
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, self.getPackageName());
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra("app_package", self.getPackageName());
+                intent.putExtra("app_uid", self.getApplicationInfo().uid);
+            } else {
+                intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.addCategory(Intent.CATEGORY_DEFAULT);
+                intent.setData(Uri.parse("package:" + self.getPackageName()));
+            }
+            self.startActivityForResult(intent, REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

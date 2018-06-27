@@ -2,6 +2,7 @@
     <string name="app_name">PermissionJedi</string>
     <string name="title_activity_permission_jedi">PermissionJediActivity</string>
     <string name="txt_permission_required">Permission is required.</string>
+    <string name="txt_notification_required">Notification access required.</string>
     <string name="btn_go_now">Go Now</string>
     <string name="btn_not_now">Not Now</string>
 

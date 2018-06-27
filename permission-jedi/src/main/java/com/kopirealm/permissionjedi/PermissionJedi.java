@@ -33,6 +33,7 @@ import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,16 +48,24 @@ public class PermissionJedi {
         return jedi;
     }
 
+    protected static final class permission {
+        public static final String GROUP_ID = "permissionjedi.permission";
+        public static final String LOCAL_NOTIFICATION = GROUP_ID + ".LOCAL_NOTIFICATION";
+    }
+
     public static final String ACTION_CHECK = "ACTION_CHECK";
     public static final String ACTION_REQUEST = "ACTION_REQUEST";
-    public static final String ACTION_APPSETTINGS = "ACTION_APPSETTINGS";
+    public static final String ACTION_APP_PERMISSIONS_SETTINGS = "ACTION_APP_PERMISSIONS_SETTINGS";
+    public static final String ACTION_APP_NOTIFICATIONS_SETTINGS = "ACTION_APP_NOTIFICATIONS_SETTINGS";
 
     private Activity activity;
     private PermissionJediActions actions;
     private HashSet<String> permissions = new HashSet<>();
     private boolean strictMode = false;
+    private final String versionName = BuildConfig.VERSION_NAME;
 
     public static PermissionJedi init(Activity activity) {
+        jedi = null;
         return PermissionJedi.getJedi().setActivity(activity);
     }
 
@@ -93,8 +102,13 @@ public class PermissionJedi {
         return true;
     }
 
-    public PermissionJedi useStrictMode() {
+    public PermissionJedi checkPermissionStrictly() {
         this.strictMode = true;
+        return this;
+    }
+
+    public PermissionJedi checkNotifications() {
+        this.addPermissions(permission.LOCAL_NOTIFICATION);
         return this;
     }
 
@@ -118,25 +132,26 @@ public class PermissionJedi {
     }
 
     public void check() {
-        if (permissions == null || permissions.isEmpty()) {
-            return;
-        }
         execute(ACTION_CHECK);
     }
 
     public void request() {
-        if (permissions == null || permissions.isEmpty()) {
-            return;
-        }
         execute(ACTION_REQUEST);
     }
 
     private void execute(String action) {
         try {
-            final String[] request = permissions.toArray(new String[permissions.size()]);
-            if (strictMode && !hasValidPermissions()) {
-                throw new IllegalAndroidPermissionException();
+            if (strictMode) {
+                if (permissions == null || permissions.isEmpty() || (!hasValidPermissions())) {
+                    throw new IllegalAndroidPermissionException();
+                }
             }
+            ArrayList<String> preRequest = new ArrayList<>(Arrays.asList(permissions.toArray(new String[permissions.size()])));
+            if (preRequest.contains(permission.LOCAL_NOTIFICATION)) {
+                preRequest.remove(permission.LOCAL_NOTIFICATION);
+                preRequest.add(0, permission.LOCAL_NOTIFICATION);
+            }
+            String[] request = preRequest.toArray(new String[preRequest.size()]);
             final Intent intent = new Intent(activity, PermissionJediActivity.class);
             Bundle extras = new Bundle();
             extras.putString(PermissionJediActivity.EXTRA_ACTION, action);
@@ -148,11 +163,16 @@ public class PermissionJedi {
         }
     }
 
-    public void gotoAppSettings() {
-        execute(ACTION_APPSETTINGS);
+    public void gotoAppPermissionsSettings() {
+        execute(ACTION_APP_PERMISSIONS_SETTINGS);
     }
 
-    public HashSet<String> getAndroidPermissions() {
+    public void gotoNotificationsSettings() {
+        this.addPermissions(permission.LOCAL_NOTIFICATION);
+        execute(ACTION_APP_NOTIFICATIONS_SETTINGS);
+    }
+
+    public HashSet<String> getDeviceAndroidPermissions() {
         final HashSet<String> androidPermissions = new HashSet<>();
         try {
             for (Field field : Manifest.permission.class.getFields()) {
@@ -168,8 +188,9 @@ public class PermissionJedi {
     }
 
     private boolean hasValidPermissions() {
-        final HashSet<String> androidPermissions = getAndroidPermissions();
-        final HashSet<String> runtimePermissions = permissions;
+        final HashSet<String> androidPermissions = getDeviceAndroidPermissions();
+        final HashSet<String> runtimePermissions = new HashSet<>(permissions);
+        runtimePermissions.remove(permission.LOCAL_NOTIFICATION);
         if (!androidPermissions.isEmpty() && !androidPermissions.containsAll(runtimePermissions)) {
             return false;
         }
@@ -190,26 +211,55 @@ public class PermissionJedi {
         customDialog(rationale, btnPos, btnNeg, diPos, diNeg).show();
     }
 
-    public void showGotoSettingsDialog(@NonNull String rationale) {
+    public void gotoAppPermissionsSettingsDialog(@NonNull String rationale) {
         rationale = (!TextUtils.isEmpty(rationale)) ? rationale : activity.getString(R.string.txt_permission_required);
-        customDialog(
+        this.gotoAppPermissionsSettingsDialog(
                 rationale,
                 activity.getString(R.string.btn_go_now),
                 activity.getString(android.R.string.cancel),
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        gotoAppSettings();
+                        gotoAppPermissionsSettings();
                     }
                 },
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                     }
-                }).show();
+                });
     }
 
-    public void showGotoSettingsDialog(@NonNull String rationale, @NonNull String btnPos, @NonNull String btnNeg, @NonNull DialogInterface.OnClickListener diPos, @NonNull DialogInterface.OnClickListener diNeg) {
+    public void gotoAppPermissionsSettingsDialog(@NonNull String rationale, @NonNull String btnPos, @NonNull String btnNeg, @NonNull DialogInterface.OnClickListener diPos, @NonNull DialogInterface.OnClickListener diNeg) {
+        customDialog(
+                rationale,
+                TextUtils.isEmpty(btnPos) ? activity.getString(R.string.btn_go_now) : btnPos,
+                TextUtils.isEmpty(btnNeg) ? activity.getString(R.string.btn_not_now) : btnNeg,
+                diPos,
+                diNeg).show();
+    }
+
+    public void showGotoNotificationsSettingsDialog(@NonNull String rationale) {
+        this.addPermissions(permission.LOCAL_NOTIFICATION);
+        rationale = (!TextUtils.isEmpty(rationale)) ? rationale : activity.getString(R.string.txt_notification_required);
+        this.showGotoNotificationsSettingsDialog(
+                rationale,
+                activity.getString(R.string.btn_go_now),
+                activity.getString(android.R.string.cancel),
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        gotoNotificationsSettings();
+                    }
+                },
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                });
+    }
+
+    public void showGotoNotificationsSettingsDialog(@NonNull String rationale, @NonNull String btnPos, @NonNull String btnNeg, @NonNull DialogInterface.OnClickListener diPos, @NonNull DialogInterface.OnClickListener diNeg) {
         customDialog(
                 rationale,
                 TextUtils.isEmpty(btnPos) ? activity.getString(R.string.btn_go_now) : btnPos,

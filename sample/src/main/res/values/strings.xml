@@ -11,4 +11,7 @@
     <string name="txt_warn_2">Go to Settings->Apps->%s->Permissions then allow permissions below and retry.\n</string>
     <string name="txt_warn_3">Pending %d permissions to be allowed.</string>
     <string name="txt_warn_4">Please allow following permissions:\n</string>
+    <string name="txt_warn_5">Go to Notifications->%s then allow notifications.\n</string>
+    <string name="txt_warn_6">Permission Jedi is sad as no permission assigned. </string>
+
 </resources>

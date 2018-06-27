@@ -8,7 +8,6 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -63,11 +62,15 @@ public class MainActivity extends AppCompatActivity {
     private void requestPermission() {
         PermissionJedi
                 .init(self)
-                .useStrictMode()
+                .checkNotifications()
                 .addPermissions(requestPerms)
                 .setActions(new PermissionJedi.PermissionJediActions() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
+                        if (permits.isEmpty()) {
+                            sbNothingChecked();
+                            return;
+                        }
                         ArrayList<String> denied = new ArrayList<>(getDeniedPermissions(permits));
                         if (denied.isEmpty()) {
                             sbAllAllowed();
@@ -82,10 +85,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkPermission() {
         PermissionJedi.init(self)
+                .checkPermissionStrictly()
                 .addPermissions(requestPerms)
+                .checkNotifications()
                 .setActions(new PermissionJedi.PermissionJediActions() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
+                        if (permits.isEmpty()) {
+                            sbNothingChecked();
+                            return;
+                        }
                         ArrayList<String> denied = new ArrayList<>(getDeniedPermissions(permits));
                         if (denied.isEmpty()) {
                             sbAllAllowed();
@@ -118,7 +127,28 @@ public class MainActivity extends AppCompatActivity {
                         mBinding.message.setText(denied.isEmpty() ? getString(R.string.txt_warn_0) : getString(R.string.txt_warn_4).concat(permissionsToStrings(denied)));
                     }
                 })
-                .showGotoSettingsDialog(rationale);
+//                .gotoAppPermissionsSettings();
+                .gotoAppPermissionsSettingsDialog(rationale);
+
+    }
+
+    private void retryNotification() {
+        String rationale = String.format(getString(R.string.txt_warn_5), getApplicationInfo().loadLabel(getPackageManager()).toString());
+        PermissionJedi.init(self)
+                .setActions(new PermissionJedi.PermissionJediActions() {
+                    @Override
+                    public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
+                        ArrayList<String> denied = new ArrayList<>(getDeniedPermissions(permits));
+                        if (denied.isEmpty()) {
+                            sbAllAllowed();
+                        } else {
+                            sbSomeAllowed(denied);
+                        }
+                        mBinding.message.setText(denied.isEmpty() ? getString(R.string.txt_warn_0) : getString(R.string.txt_warn_4).concat(permissionsToStrings(denied)));
+                    }
+                })
+//                .gotoNotificationsSettings()
+                .showGotoNotificationsSettingsDialog(rationale);
 
     }
 
@@ -152,7 +182,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String permissionsToStrings(ArrayList<String> permissions) {
-        return ("\n" + android.text.TextUtils.join(",\n", permissions)).replace("android.permission.", "");
+        return ("\n" + android.text.TextUtils.join(",\n", permissions)).replace("android.permission.", "").replace(PermissionJedi.permission.GROUP_ID + ".", "");
+    }
+
+    private void sbNothingChecked() {
+        Snackbar.make(
+                mBinding.coordinatorLayout,
+                String.format(getString(R.string.txt_warn_6)),
+                Snackbar.LENGTH_SHORT)
+                .show();
     }
 
     private void sbAllAllowed() {
@@ -168,17 +206,33 @@ public class MainActivity extends AppCompatActivity {
                 }).show();
     }
 
-    private void sbSomeAllowed(ArrayList<String> denied) {
-        Snackbar.make(
-                mBinding.coordinatorLayout,
-                String.format(getString(R.string.txt_warn_3), denied.size()),
-                Snackbar.LENGTH_LONG)
-                .setAction(getString(R.string.title_retry), new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        requestPermission();
-                    }
-                }).show();
+    private void sbSomeAllowed(final ArrayList<String> denied) {
+        boolean notificationOnly = denied.size() == 1 && denied.contains(PermissionJedi.permission.LOCAL_NOTIFICATION);
+        if (notificationOnly) {
+            Snackbar.make(
+                    mBinding.coordinatorLayout,
+                    String.format(getString(R.string.txt_warn_3), denied.size()),
+                    Snackbar.LENGTH_LONG)
+                    .setAction(getString(R.string.title_retry), new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            retryNotification();
+                        }
+                    }).show();
+
+        } else {
+            Snackbar.make(
+                    mBinding.coordinatorLayout,
+                    String.format(getString(R.string.txt_warn_3), denied.size()),
+                    Snackbar.LENGTH_LONG)
+                    .setAction(getString(R.string.title_retry), new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            requestPermission();
+                        }
+                    }).show();
+
+        }
     }
 
 }
