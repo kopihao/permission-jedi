@@ -90,8 +90,8 @@ public class PermissionJediActivity extends Activity {
         }
     }
 
-    private boolean androidPreM() {
-        return (Build.VERSION.SDK_INT < Build.VERSION_CODES.M);
+    private boolean isAndroidPreM() {
+        return !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M);
     }
 
     private void runtimePermissions() {
@@ -120,15 +120,18 @@ public class PermissionJediActivity extends Activity {
     private HashMap<String, Boolean> isPermissionRevokedByPolicy(@NonNull String... permissions) {
         HashMap<String, Boolean> permits = new HashMap<>();
         for (final String p : permissions) {
-            if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
-                // Ignore
-                // permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+            if (isAndroidPreM()) {
+                permits.put(p, false);
             } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
+                    // Ignore
+                    // permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+                } else {
                     permits.put(p, self.getPackageManager().isPermissionRevokedByPolicy(p, self.getPackageName()));
+
                 }
+                Log.d("Jasper", "checkPolicy()::" + p + "::" + permits.get(p));
             }
-            Log.d("Jasper", "checkPolicy()::" + p + "::" + permits.get(p));
         }
         return permits;
     }
@@ -142,10 +145,14 @@ public class PermissionJediActivity extends Activity {
     private HashMap<String, Boolean> checkPermission(@NonNull String... permissions) {
         HashMap<String, Boolean> permits = new HashMap<>();
         for (final String p : permissions) {
-            if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
-                permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+            if (isAndroidPreM()) {
+                permits.put(p, true);
             } else {
-                permits.put(p, (ContextCompat.checkSelfPermission(self, p) == PackageManager.PERMISSION_GRANTED));
+                if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
+                    permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+                } else {
+                    permits.put(p, (ContextCompat.checkSelfPermission(self, p) == PackageManager.PERMISSION_GRANTED));
+                }
             }
             Log.d("Jasper", "checkPermission()::" + p + "::" + permits.get(p));
         }
@@ -169,8 +176,12 @@ public class PermissionJediActivity extends Activity {
         if (missingPermissions.isEmpty()) {
             grantAllPermissions(permissions);
         } else {
-            ActivityCompat.requestPermissions(self, missingPermissions
-                    .toArray(new String[missingPermissions.size()]), REQUEST_CODE_ASK_PERMISSIONS);
+            if (isAndroidPreM()) {
+                grantAllPermissions(permissions);
+            } else {
+                ActivityCompat.requestPermissions(self, missingPermissions
+                        .toArray(new String[missingPermissions.size()]), REQUEST_CODE_ASK_PERMISSIONS);
+            }
         }
     }
 
