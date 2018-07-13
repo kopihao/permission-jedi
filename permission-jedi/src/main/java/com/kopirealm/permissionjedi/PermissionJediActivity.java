@@ -123,12 +123,11 @@ public class PermissionJediActivity extends Activity {
             if (isAndroidPreM()) {
                 permits.put(p, false);
             } else {
-                if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
-                    // Ignore
-                    // permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
-                } else {
+                try {
                     permits.put(p, self.getPackageManager().isPermissionRevokedByPolicy(p, self.getPackageName()));
-
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    permits.put(p, false);
                 }
                 Log.d("Jasper", "checkPolicy()::" + p + "::" + permits.get(p));
             }
