@@ -1,13 +1,13 @@
 package com.kopirealm.permissionjedi;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -19,10 +19,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private ActivityMainBinding mBinding;
-    private AppCompatActivity self = this;
+    private Activity self = this;
     private final String[] requestPerms = new String[]{
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE,
