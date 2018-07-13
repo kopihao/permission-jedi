@@ -21,6 +21,7 @@
 
 package com.kopirealm.permissionjedi;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -101,6 +102,9 @@ public class PermissionJediActivity extends Activity {
             case PermissionJedi.ACTION_REQUEST:
                 requestPermissions(permissions);
                 break;
+            case PermissionJedi.ACTION_REVOKE:
+                checkPolicy(permissions);
+                break;
             case PermissionJedi.ACTION_APP_PERMISSIONS_SETTINGS:
                 gotoAppSettings();
                 break;
@@ -110,6 +114,29 @@ public class PermissionJediActivity extends Activity {
             default:
                 finish();
         }
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private HashMap<String, Boolean> isPermissionRevokedByPolicy(@NonNull String... permissions) {
+        HashMap<String, Boolean> permits = new HashMap<>();
+        for (final String p : permissions) {
+            if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
+                // Ignore
+                // permits.put(p, (NotificationManagerCompat.from(self).areNotificationsEnabled()));
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    permits.put(p, self.getPackageManager().isPermissionRevokedByPolicy(p, self.getPackageName()));
+                }
+            }
+            Log.d("Jasper", "checkPolicy()::" + p + "::" + permits.get(p));
+        }
+        return permits;
+    }
+
+    private void checkPolicy(@NonNull String... permissions) {
+        final HashMap<String, Boolean> permits = isPermissionRevokedByPolicy(permissions);
+        PermissionJedi.getJedi().notifyPermissionStatus(permits);
+        finish();
     }
 
     private HashMap<String, Boolean> checkPermission(@NonNull String... permissions) {
@@ -154,7 +181,8 @@ public class PermissionJediActivity extends Activity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         final HashMap<String, Boolean> permits = new HashMap<>();
         if (requestCode == REQUEST_CODE_ASK_PERMISSIONS) {

@@ -38,6 +38,17 @@ public class MainActivity extends AppCompatActivity {
             switch (item.getItemId()) {
                 case R.id.navigation_home:
                     mBinding.message.setText(R.string.title_home);
+                    PermissionJedi.init(self)
+                            .addPermissions(requestPerms)
+                            .setActions(new PermissionJedi.PermissionJediActions() {
+                                @Override
+                                public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
+                                    for (Map.Entry<String, Boolean> entry : permits.entrySet()) {
+                                        Log.d("kopihao", entry.getKey() + " is revoked by policy : " + entry.getValue());
+                                    }
+                                }
+                            })
+                            .isPermissionRevokedByPolicy();
                     return true;
                 case R.id.navigation_dashboard:
                     mBinding.message.setText(R.string.title_check);

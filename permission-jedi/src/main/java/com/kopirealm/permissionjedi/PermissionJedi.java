@@ -55,6 +55,7 @@ public class PermissionJedi {
 
     public static final String ACTION_CHECK = "ACTION_CHECK";
     public static final String ACTION_REQUEST = "ACTION_REQUEST";
+    public static final String ACTION_REVOKE = "ACTION_REVOKE";
     public static final String ACTION_APP_PERMISSIONS_SETTINGS = "ACTION_APP_PERMISSIONS_SETTINGS";
     public static final String ACTION_APP_NOTIFICATIONS_SETTINGS = "ACTION_APP_NOTIFICATIONS_SETTINGS";
 
@@ -137,6 +138,10 @@ public class PermissionJedi {
 
     public void request() {
         execute(ACTION_REQUEST);
+    }
+
+    public void isPermissionRevokedByPolicy() {
+        execute(ACTION_REVOKE);
     }
 
     private void execute(String action) {
