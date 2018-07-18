@@ -109,7 +109,7 @@ public class PermissionJediActivity extends Activity {
                 gotoAppSettings();
                 break;
             case PermissionJedi.ACTION_APP_NOTIFICATIONS_SETTINGS:
-                gotoNotifcationSettings();
+                gotoNotificationSettings();
                 break;
             default:
                 finish();
@@ -222,11 +222,11 @@ public class PermissionJediActivity extends Activity {
         self.startActivityForResult(intent, REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS);
     }
 
-    public void gotoNotifcationSettings() {
-        gotoNotifcationSettings(null);
+    public void gotoNotificationSettings() {
+        gotoNotificationSettings(null);
     }
 
-    public void gotoNotifcationSettings(String channel) {
+    public void gotoNotificationSettings(String channel) {
         try {
             Intent intent = new Intent();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
