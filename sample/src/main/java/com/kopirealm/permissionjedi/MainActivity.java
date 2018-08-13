@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
                     mBinding.message.setText(R.string.title_home);
                     PermissionJedi.init(self)
                             .addPermissions(requestPerms)
-                            .setActions(new PermissionJedi.PermissionJediActions() {
+                            .onComplete(new PermissionJedi.PermissionJediDelegate() {
                                 @Override
                                 public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
                                     for (Map.Entry<String, Boolean> entry : permits.entrySet()) {
@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
                 .init(self)
                 .checkNotifications()
                 .addPermissions(requestPerms)
-                .setActions(new PermissionJedi.PermissionJediActions() {
+                .onComplete(new PermissionJedi.PermissionJediDelegate() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
                         if (permits.isEmpty()) {
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
                 .checkPermissionStrictly()
                 .addPermissions(requestPerms)
                 .checkNotifications()
-                .setActions(new PermissionJedi.PermissionJediActions() {
+                .onComplete(new PermissionJedi.PermissionJediDelegate() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
                         if (permits.isEmpty()) {
@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
         }
         PermissionJedi.init(self)
                 .addPermissions(requestPerms)
-                .setActions(new PermissionJedi.PermissionJediActions() {
+                .onComplete(new PermissionJedi.PermissionJediDelegate() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
                         ArrayList<String> denied = new ArrayList<>(getDeniedPermissions(permits));
@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
     private void retryNotification() {
         String rationale = String.format(getString(R.string.txt_warn_5), getApplicationInfo().loadLabel(getPackageManager()).toString());
         PermissionJedi.init(self)
-                .setActions(new PermissionJedi.PermissionJediActions() {
+                .onComplete(new PermissionJedi.PermissionJediDelegate() {
                     @Override
                     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
                         ArrayList<String> denied = new ArrayList<>(getDeniedPermissions(permits));

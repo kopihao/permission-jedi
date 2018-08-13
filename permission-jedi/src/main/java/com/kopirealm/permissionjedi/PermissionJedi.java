@@ -28,9 +28,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -40,12 +40,16 @@ import java.util.HashSet;
 
 public class PermissionJedi {
 
-    private static PermissionJedi jedi = null;
+    public static final boolean DEBUG = true;
+    private static final String versionName = BuildConfig.VERSION_NAME;
+    private static PermissionJedi jediPalace = null;
 
-    public static PermissionJedi getJedi() {
-        System.gc();
-        jedi = (jedi != null) ? jedi : new PermissionJedi();
-        return jedi;
+    synchronized static PermissionJedi getJedi() {
+        if (jediPalace == null) {
+            PermissionJedi.logj("jediPalace == null");
+            jediPalace = new PermissionJedi(null);
+        }
+        return jediPalace;
     }
 
     protected static final class permission {
@@ -60,56 +64,35 @@ public class PermissionJedi {
     public static final String ACTION_APP_NOTIFICATIONS_SETTINGS = "ACTION_APP_NOTIFICATIONS_SETTINGS";
 
     private Activity activity;
-    private PermissionJediActions actions;
+    private PermissionJediDelegate delegate;
     private HashSet<String> permissions = new HashSet<>();
     private boolean strictMode = false;
-    private final String versionName = BuildConfig.VERSION_NAME;
 
-    public static PermissionJedi init(Activity activity) {
-        jedi = null;
-        return PermissionJedi.getJedi().setActivity(activity);
+    public synchronized static PermissionJedi init(Activity activity) {
+        PermissionJedi jediBaby = new PermissionJedi(activity);
+        jediPalace = jediBaby;
+        return PermissionJedi.getJedi();
     }
 
-    protected boolean isValidContext() {
-        if (activity == null || activity.isFinishing()) {
-            return false;
-        }
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN) {
-            if (activity.isDestroyed()) {
-                return false;
-            }
-        }
-        return true;
+    public static boolean isAndroidPreM() {
+        return !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M);
     }
 
-    protected boolean notifyPermissionStatus(final HashMap<String, Boolean> permits) {
-        try {
-            if (!isValidContext()) {
-                return false;
-            }
-            if (actions == null) {
-                return false;
-            }
-            new Handler(activity.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    actions.onPermissionReviewed(permits);
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-        return true;
+    private PermissionJedi(Activity activity) {
+        this.activity = activity;
+    }
+
+    public PermissionJedi onComplete(PermissionJediDelegate delegate) {
+        this.delegate = delegate;
+        return this;
+    }
+
+    PermissionJediDelegate getDelegate() {
+        return delegate;
     }
 
     public PermissionJedi checkPermissionStrictly() {
         this.strictMode = true;
-        return this;
-    }
-
-    public PermissionJedi checkNotifications() {
-        this.addPermissions(permission.LOCAL_NOTIFICATION);
         return this;
     }
 
@@ -118,30 +101,20 @@ public class PermissionJedi {
         return this;
     }
 
-    public void bind(PermissionJediActivity activity) {
-        activity.notifier = actions;
-    }
-
-    public PermissionJedi setActions(PermissionJediActions actions) {
-        this.actions = actions;
+    public PermissionJedi checkNotifications() {
+        this.addPermissions(permission.LOCAL_NOTIFICATION);
         return this;
     }
 
-    public PermissionJedi setActivity(Activity activity) {
-        this.activity = activity;
-        return this;
+    static <E extends Exception> void logj(E e) {
+        if (!DEBUG) return;
+        e.printStackTrace();
+        Log.d("kopihao", PermissionJedi.class.getSimpleName() + ":" + versionName + "\t" + e.getMessage());
     }
 
-    public void check() {
-        execute(ACTION_CHECK);
-    }
-
-    public void request() {
-        execute(ACTION_REQUEST);
-    }
-
-    public void isPermissionRevokedByPolicy() {
-        execute(ACTION_REVOKE);
+    static void logj(String s) {
+        if (!DEBUG) return;
+        Log.d("kopihao", PermissionJedi.class.getSimpleName() + ":" + versionName + "\t" + s);
     }
 
     private void execute(String action) {
@@ -156,7 +129,7 @@ public class PermissionJedi {
                 preRequest.remove(permission.LOCAL_NOTIFICATION);
                 preRequest.add(0, permission.LOCAL_NOTIFICATION);
             }
-            String[] request = preRequest.toArray(new String[preRequest.size()]);
+            final String[] request = preRequest.toArray(new String[preRequest.size()]);
             final Intent intent = new Intent(activity, PermissionJediActivity.class);
             Bundle extras = new Bundle();
             extras.putString(PermissionJediActivity.EXTRA_ACTION, action);
@@ -175,6 +148,18 @@ public class PermissionJedi {
     public void gotoNotificationsSettings() {
         this.addPermissions(permission.LOCAL_NOTIFICATION);
         execute(ACTION_APP_NOTIFICATIONS_SETTINGS);
+    }
+
+    public void check() {
+        execute(ACTION_CHECK);
+    }
+
+    public void request() {
+        execute(ACTION_REQUEST);
+    }
+
+    public void isPermissionRevokedByPolicy() {
+        execute(ACTION_REVOKE);
     }
 
     public HashSet<String> getDeviceAndroidPermissions() {
@@ -200,16 +185,6 @@ public class PermissionJedi {
             return false;
         }
         return true;
-    }
-
-    private class IllegalAndroidPermissionException extends IllegalArgumentException {
-        public IllegalAndroidPermissionException() {
-            super("Illegal Android Permission Found.");
-        }
-    }
-
-    public interface PermissionJediActions {
-        public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits);
     }
 
     public void showRationaleDialog(@NonNull String rationale, @NonNull String btnPos, @NonNull String btnNeg, @NonNull DialogInterface.OnClickListener diPos, @NonNull DialogInterface.OnClickListener diNeg) {
@@ -286,6 +261,16 @@ public class PermissionJedi {
         }
         adb.setCancelable(false);
         return adb;
+    }
+
+    public class IllegalAndroidPermissionException extends IllegalArgumentException {
+        public IllegalAndroidPermissionException() {
+            super("Illegal Android Permission Found.");
+        }
+    }
+
+    public interface PermissionJediDelegate {
+        void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits);
     }
 
 }

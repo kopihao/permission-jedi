@@ -35,13 +35,12 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-public class PermissionJediActivity extends Activity {
+public class PermissionJediActivity extends Activity implements PermissionJedi.PermissionJediDelegate {
 
     private static final int REQUEST_CODE_ASK_PERMISSIONS = 91001;
     private static final int REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS = 91002;
@@ -52,46 +51,39 @@ public class PermissionJediActivity extends Activity {
     private Activity self = this;
     private String action = "";
     private String[] permissions = null;
-    protected PermissionJedi.PermissionJediActions notifier = null;
 
+    private void logj(String s) {
+        PermissionJedi.logj(s);
+    }
+
+    private void logj(Exception e) {
+        PermissionJedi.logj(e);
+    }
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle extras = getIntent().getExtras();
         action = extras.getString(EXTRA_ACTION, "");
         permissions = extras.getStringArray(EXTRA_PERMISSIONS);
-        PermissionJedi.getJedi().bind(this);
         runtimePermissions();
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putString(EXTRA_ACTION, action);
-        outState.putStringArray(EXTRA_PERMISSIONS, permissions);
+    protected void onSaveInstanceState(Bundle extras) {
+        extras.putString(EXTRA_ACTION, action);
+        extras.putStringArray(EXTRA_PERMISSIONS, permissions);
+        super.onSaveInstanceState(extras);
+        logj("run onSaveInstanceState()");
     }
 
     @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        if (savedInstanceState != null) {
-            action = savedInstanceState.getString(EXTRA_ACTION, "");
-            permissions = savedInstanceState.getStringArray(EXTRA_PERMISSIONS);
+    protected void onRestoreInstanceState(Bundle extras) {
+        super.onRestoreInstanceState(extras);
+        if (extras != null) {
+            action = extras.getString(EXTRA_ACTION, "");
+            permissions = extras.getStringArray(EXTRA_PERMISSIONS);
         }
-        Log.d("Jasper", "run onRestoreInstanceState()");
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (!PermissionJedi.getJedi().isValidContext()) {
-            Log.d("Jasper", "new PermissionJedi()");
-            finish();
-        }
-    }
-
-    private boolean isAndroidPreM() {
-        return !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M);
+        logj("run onRestoreInstanceState()");
     }
 
     private void runtimePermissions() {
@@ -120,31 +112,29 @@ public class PermissionJediActivity extends Activity {
     private HashMap<String, Boolean> isPermissionRevokedByPolicy(@NonNull String... permissions) {
         HashMap<String, Boolean> permits = new HashMap<>();
         for (final String p : permissions) {
-            if (isAndroidPreM()) {
+            if (PermissionJedi.isAndroidPreM()) {
                 permits.put(p, false);
             } else {
                 try {
                     permits.put(p, self.getPackageManager().isPermissionRevokedByPolicy(p, self.getPackageName()));
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logj(e);
                     permits.put(p, false);
                 }
-                Log.d("Jasper", "checkPolicy()::" + p + "::" + permits.get(p));
+                logj("checkPolicy()::" + p + "::" + permits.get(p));
             }
         }
         return permits;
     }
-
     private void checkPolicy(@NonNull String... permissions) {
         final HashMap<String, Boolean> permits = isPermissionRevokedByPolicy(permissions);
-        PermissionJedi.getJedi().notifyPermissionStatus(permits);
-        finish();
+        onPermissionReviewed(permits);
     }
 
     private HashMap<String, Boolean> checkPermission(@NonNull String... permissions) {
         HashMap<String, Boolean> permits = new HashMap<>();
         for (final String p : permissions) {
-            if (isAndroidPreM()) {
+            if (PermissionJedi.isAndroidPreM()) {
                 permits.put(p, true);
             } else {
                 if (p.equals(PermissionJedi.permission.LOCAL_NOTIFICATION)) {
@@ -153,15 +143,14 @@ public class PermissionJediActivity extends Activity {
                     permits.put(p, (ContextCompat.checkSelfPermission(self, p) == PackageManager.PERMISSION_GRANTED));
                 }
             }
-            Log.d("Jasper", "checkPermission()::" + p + "::" + permits.get(p));
+            logj("checkPermission()::" + p + "::" + permits.get(p));
         }
         return permits;
     }
 
     private void hasPermissions(@NonNull String... permissions) {
         final HashMap<String, Boolean> permits = checkPermission(permissions);
-        PermissionJedi.getJedi().notifyPermissionStatus(permits);
-        finish();
+        onPermissionReviewed(permits);
     }
 
     private void requestPermissions(@NonNull String... permissions) {
@@ -175,7 +164,7 @@ public class PermissionJediActivity extends Activity {
         if (missingPermissions.isEmpty()) {
             grantAllPermissions(permissions);
         } else {
-            if (isAndroidPreM()) {
+            if (PermissionJedi.isAndroidPreM()) {
                 grantAllPermissions(permissions);
             } else {
                 ActivityCompat.requestPermissions(self, missingPermissions
@@ -200,8 +189,7 @@ public class PermissionJediActivity extends Activity {
                 permits.put(permissions[i], grantResults[i] == PackageManager.PERMISSION_GRANTED);
             }
         }
-        PermissionJedi.getJedi().notifyPermissionStatus(permits);
-        finish();
+        onPermissionReviewed(permits);
     }
 
     @Override
@@ -249,8 +237,38 @@ public class PermissionJediActivity extends Activity {
             }
             self.startActivityForResult(intent, REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS);
         } catch (Exception e) {
-            e.printStackTrace();
+            logj(e);
         }
     }
 
+    private boolean isDooming() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            if (this.isDestroyed()) {
+                return true;
+            }
+        } else {
+            if (this.isFinishing()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
+        try {
+            if (!isDooming()) {
+                if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
+                    PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
+                } else {
+                    throw new Exception("Jedi is crippled");
+                }
+            }
+        } catch (Exception e) {
+            logj(e);
+        } finally {
+            finish();
+            System.gc();
+        }
+    }
 }
