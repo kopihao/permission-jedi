@@ -41,4 +41,4 @@ dependencies {
 // Publish to Maven Central via OSSRH Maven repository
 // apply from: 'publish-maven.gradle'
 // Publish to Maven Central + JCenter via Bintray
-apply from: 'publish-bintray.gradle'
+// apply from: 'publish-bintray.gradle'
