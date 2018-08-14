@@ -6,6 +6,7 @@
         <activity
             android:name=".PermissionJediActivity"
             android:label="@string/title_activity_permission_jedi"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|keyboard|locale|navigation|layoutDirection"
             android:theme="@style/Theme.AppCompat.Translucent"></activity>
     </application>
 
