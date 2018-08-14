@@ -284,15 +284,14 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
                 try {
                     delegateResult.clear();
                     delegateResult.putAll(permits);
-                    btnMayTheForceBeWithYou.performClick();
+                    if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
+                        PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
+                    } else {
+                        btnMayTheForceBeWithYou.performClick();
+                    }
                 } catch (Exception e) {
                     throw new Exception("Jedi is crippled");
                 }
-//                if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
-//                     PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
-//                } else {
-//                    throw new Exception("Jedi is crippled");
-//                }
             } else {
                 throw new Exception("Jedi Activity Aborted");
             }
