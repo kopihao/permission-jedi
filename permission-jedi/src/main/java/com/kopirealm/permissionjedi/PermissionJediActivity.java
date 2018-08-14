@@ -285,7 +285,7 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
                     delegateResult.clear();
                     delegateResult.putAll(permits);
                     if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
-                        PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
+                        PermissionJedi.getJedi().getDelegate().onPermissionReviewed(delegateResult);
                     } else {
                         btnMayTheForceBeWithYou.performClick();
                     }
