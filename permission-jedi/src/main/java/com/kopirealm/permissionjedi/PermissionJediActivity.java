@@ -35,6 +35,8 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
+import android.view.View;
+import android.widget.Button;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,6 +53,9 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
     private Activity self = this;
     private String action = "";
     private String[] permissions = null;
+    private Button btnMayTheForceBeWithYou = null;
+    private HashMap<String, Boolean> delegateResult = new HashMap<>();
+
 
     private void logj(String s) {
         PermissionJedi.logj(s);
@@ -59,13 +64,31 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
     private void logj(Exception e) {
         PermissionJedi.logj(e);
     }
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle extras = getIntent().getExtras();
         action = extras.getString(EXTRA_ACTION, "");
         permissions = extras.getStringArray(EXTRA_PERMISSIONS);
+        mayTheForceBeWithYou();
         runtimePermissions();
+    }
+
+    private void mayTheForceBeWithYou() {
+        try {
+            btnMayTheForceBeWithYou = new Button(this);
+            btnMayTheForceBeWithYou.setOnClickListener(new View.OnClickListener() {
+                final PermissionJedi.PermissionJediDelegate delegate = PermissionJedi.getJedi().clone().getDelegate();
+
+                @Override
+                public void onClick(View v) {
+                    delegate.onPermissionReviewed(delegateResult);
+                }
+            });
+        } catch (Exception e) {
+            logj(e);
+        }
     }
 
     @Override
@@ -258,17 +281,31 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
         try {
             if (!isDooming()) {
-                if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
-                    PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
-                } else {
+                try {
+                    delegateResult.clear();
+                    delegateResult.putAll(permits);
+                    btnMayTheForceBeWithYou.performClick();
+                } catch (Exception e) {
                     throw new Exception("Jedi is crippled");
                 }
+//                if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
+//                     PermissionJedi.getJedi().getDelegate().onPermissionReviewed(permits);
+//                } else {
+//                    throw new Exception("Jedi is crippled");
+//                }
+            } else {
+                throw new Exception("Jedi Activity Aborted");
             }
         } catch (Exception e) {
             logj(e);
         } finally {
             finish();
-            System.gc();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        System.gc();
     }
 }

@@ -38,7 +38,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class PermissionJedi {
+public class PermissionJedi implements Cloneable {
 
     public static final boolean DEBUG = true;
     private static final String versionName = BuildConfig.VERSION_NAME;
@@ -109,7 +109,7 @@ public class PermissionJedi {
     static <E extends Exception> void logj(E e) {
         if (!DEBUG) return;
         e.printStackTrace();
-        Log.d("kopihao", PermissionJedi.class.getSimpleName() + ":" + versionName + "\t" + e.getMessage());
+        Log.e("kopihao", PermissionJedi.class.getSimpleName() + ":" + versionName + "\t" + e.getMessage());
     }
 
     static void logj(String s) {
@@ -273,4 +273,8 @@ public class PermissionJedi {
         void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits);
     }
 
+    @Override
+    protected PermissionJedi clone() throws CloneNotSupportedException {
+        return (PermissionJedi) super.clone();
+    }
 }
