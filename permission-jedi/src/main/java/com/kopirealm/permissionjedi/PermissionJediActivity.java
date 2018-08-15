@@ -47,30 +47,17 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
     private static final int REQUEST_CODE_ASK_PERMISSIONS = 91001;
     private static final int REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS = 91002;
     private static final int REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS = 91003;
-    public static final String EXTRA_ACTION = "EXTRA_ACTION";
-    public static final String EXTRA_PERMISSIONS = "EXTRA_PERMISSIONS";
 
     private Activity self = this;
-    private String action = "";
-    private String[] permissions = null;
     private Button btnMayTheForceBeWithYou = null;
     private HashMap<String, Boolean> delegateResult = new HashMap<>();
-
-
-    private void logj(String s) {
-        PermissionJedi.logj(s);
-    }
-
-    private void logj(Exception e) {
-        PermissionJedi.logj(e);
-    }
+    private PermissionJediKit jediKit = null;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle extras = getIntent().getExtras();
-        action = extras.getString(EXTRA_ACTION, "");
-        permissions = extras.getStringArray(EXTRA_PERMISSIONS);
+        jediKit = PermissionJediKit.renounce(extras.getSerializable(PermissionJediKit.EXTRA_KEY));
         mayTheForceBeWithYou();
         runtimePermissions();
     }
@@ -93,8 +80,7 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
 
     @Override
     protected void onSaveInstanceState(Bundle extras) {
-        extras.putString(EXTRA_ACTION, action);
-        extras.putStringArray(EXTRA_PERMISSIONS, permissions);
+        extras.putSerializable(PermissionJediKit.EXTRA_KEY, jediKit);
         super.onSaveInstanceState(extras);
         logj("run onSaveInstanceState()");
     }
@@ -103,14 +89,18 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
     protected void onRestoreInstanceState(Bundle extras) {
         super.onRestoreInstanceState(extras);
         if (extras != null) {
-            action = extras.getString(EXTRA_ACTION, "");
-            permissions = extras.getStringArray(EXTRA_PERMISSIONS);
+            jediKit = PermissionJediKit.renounce(extras.getSerializable(PermissionJediKit.EXTRA_KEY));
         }
         logj("run onRestoreInstanceState()");
     }
 
     private void runtimePermissions() {
-        switch (action) {
+        final String[] permissions = jediKit.getPermissions();
+        if (permissions.length == 0) {
+            finish();
+            return;
+        }
+        switch (jediKit.getAction()) {
             case PermissionJedi.ACTION_CHECK:
                 hasPermissions(permissions);
                 break;
@@ -149,6 +139,7 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
         }
         return permits;
     }
+
     private void checkPolicy(@NonNull String... permissions) {
         final HashMap<String, Boolean> permits = isPermissionRevokedByPolicy(permissions);
         onPermissionReviewed(permits);
@@ -202,30 +193,7 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
         onRequestPermissionsResult(REQUEST_CODE_ASK_PERMISSIONS, permissions, grantResults);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        final HashMap<String, Boolean> permits = new HashMap<>();
-        if (requestCode == REQUEST_CODE_ASK_PERMISSIONS) {
-            for (int i = 0; i < permissions.length; i++) {
-                permits.put(permissions[i], grantResults[i] == PackageManager.PERMISSION_GRANTED);
-            }
-        }
-        onPermissionReviewed(permits);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS ||
-                requestCode == REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS) {
-            hasPermissions(permissions);
-            return;
-        }
-    }
-
-    public void gotoAppSettings() {
+    private void gotoAppSettings() {
         Intent intent = new Intent();
         intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         Uri uri = Uri.fromParts("package", self.getPackageName(), null);
@@ -233,11 +201,11 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
         self.startActivityForResult(intent, REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS);
     }
 
-    public void gotoNotificationSettings() {
+    private void gotoNotificationSettings() {
         gotoNotificationSettings(null);
     }
 
-    public void gotoNotificationSettings(String channel) {
+    private void gotoNotificationSettings(String channel) {
         try {
             Intent intent = new Intent();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -264,31 +232,37 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
         }
     }
 
-    private boolean isDooming() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            if (this.isDestroyed()) {
-                return true;
-            }
-        } else {
-            if (this.isFinishing()) {
-                return true;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        final HashMap<String, Boolean> permits = new HashMap<>();
+        if (requestCode == REQUEST_CODE_ASK_PERMISSIONS) {
+            for (int i = 0; i < permissions.length; i++) {
+                permits.put(permissions[i], grantResults[i] == PackageManager.PERMISSION_GRANTED);
             }
         }
-        return false;
+        onPermissionReviewed(permits);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_GOTO_APP_PERMISSION_SETTINGS ||
+                requestCode == REQUEST_CODE_GOTO_APP_NOTIFICATIONS_SETTINGS) {
+            hasPermissions(jediKit.getPermissions());
+            return;
+        }
     }
 
     @Override
     public void onPermissionReviewed(@NonNull HashMap<String, Boolean> permits) {
         try {
-            if (!isDooming()) {
+            if (!isVanishing()) {
                 try {
                     delegateResult.clear();
                     delegateResult.putAll(permits);
-                    if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
-                        PermissionJedi.getJedi().getDelegate().onPermissionReviewed(delegateResult);
-                    } else {
-                        btnMayTheForceBeWithYou.performClick();
-                    }
+                    postResult();
                 } catch (Exception e) {
                     throw new Exception("Jedi is crippled");
                 }
@@ -302,9 +276,38 @@ public class PermissionJediActivity extends Activity implements PermissionJedi.P
         }
     }
 
+    private boolean isVanishing() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            if (this.isDestroyed()) {
+                return true;
+            }
+        } else {
+            if (this.isFinishing()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void postResult() throws Exception {
+        if (PermissionJedi.getJedi() != null && PermissionJedi.getJedi().getDelegate() != null) {
+            PermissionJedi.getJedi().getDelegate().onPermissionReviewed(delegateResult);
+        } else {
+            btnMayTheForceBeWithYou.performClick();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         System.gc();
+    }
+
+    private void logj(String s) {
+        PermissionJedi.logj(s);
+    }
+
+    private void logj(Exception e) {
+        PermissionJedi.logj(e);
     }
 }

@@ -119,23 +119,30 @@ public class PermissionJedi implements Cloneable {
 
     private void execute(String action) {
         try {
+            // Verify Permissions Requested
             if (strictMode) {
                 if (permissions == null || permissions.isEmpty() || (!hasValidPermissions())) {
                     throw new IllegalAndroidPermissionException();
                 }
             }
+            // Conclude Permissions Requested
             ArrayList<String> preRequest = new ArrayList<>(Arrays.asList(permissions.toArray(new String[permissions.size()])));
             if (preRequest.contains(permission.LOCAL_NOTIFICATION)) {
                 preRequest.remove(permission.LOCAL_NOTIFICATION);
                 preRequest.add(0, permission.LOCAL_NOTIFICATION);
             }
-            final String[] request = preRequest.toArray(new String[preRequest.size()]);
-            final Intent intent = new Intent(activity, PermissionJediActivity.class);
+            // Prepare Permission Jedi Kit
+            final PermissionJediKit jediKit = new PermissionJediKit();
+            jediKit.setAction(action);
+            jediKit.setPermissions(preRequest.toArray(new String[preRequest.size()]));
+            // Prework to navigate
             Bundle extras = new Bundle();
-            extras.putString(PermissionJediActivity.EXTRA_ACTION, action);
-            extras.putStringArray(PermissionJediActivity.EXTRA_PERMISSIONS, request);
+            extras.putSerializable(PermissionJediKit.EXTRA_KEY, jediKit.serialized());
+            // Prepare to navigate
+            final Intent intent = new Intent(activity, PermissionJediActivity.class);
             intent.putExtras(extras);
             activity.startActivity(intent);
+
         } catch (IllegalAndroidPermissionException e) {
             e.printStackTrace();
         }
